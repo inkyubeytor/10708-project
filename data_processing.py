@@ -39,7 +39,7 @@ def load_data():
     return df
 
 
-def get_folds(df, split="strain"):
+def get_datasets(df, split="strain"):
     if split == "strain":
         folds = {"alpha": df.iloc[:75], "delta": df.iloc[75:99], "omicron": df.iloc[99:]}
         return folds
