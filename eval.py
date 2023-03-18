@@ -38,4 +38,4 @@ if __name__ == "__main__":
 
             pred_test = preds_test[(preds_test["hyp"] == best_hyp) & (preds_test["steps"] == step)]["predicted_mean"]
             rmse_test = mean_squared_error(truth_test, pred_test, squared=False)
-            print(strain, step, rmse_val, best_hyp, rmse_test)
+            print(strain, step, best_hyp, rmse_val, rmse_test)

@@ -49,8 +49,7 @@ if __name__ == "__main__":
                     result = model.fit(maxlags=hyp)
                     lag_order = result.k_ar
                     pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
-                    pred = pred[:, 0]
-                    print(pred)
+                    pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx+3))
                     # B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
                     # print(np.logical_or(B_est == "E", B_est == "e"))
                     # model = sm.tsa.SVAR(endog,
