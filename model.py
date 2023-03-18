@@ -17,7 +17,7 @@ param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
 
 
 if __name__ == "__main__":
-    model_name = "sma"
+    model_name = "var"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
 
@@ -45,14 +45,21 @@ if __name__ == "__main__":
                 elif model_name == "var":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
-                    # model = sm.tsa.VAR(endog, missing="drop")
-                    # np.tile('E', (endog.shape[1], endog.shape[1]))
-                    model = sm.tsa.SVAR(endog,
-                                        svar_type="B", B=np.identity(endog.shape[1]),
-                                        missing="drop")
+                    model = sm.tsa.VAR(endog, missing="drop")
                     result = model.fit(maxlags=hyp)
-                    pred = result.forecast(endog[-hyp:], steps=3).to_frame()
+                    lag_order = result.k_ar
+                    pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
+                    pred = pred[:, 0]
                     print(pred)
+                    # B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
+                    # print(np.logical_or(B_est == "E", B_est == "e"))
+                    # model = sm.tsa.SVAR(endog,
+                    #                     svar_type="B", B=B_est,
+                    #                     missing="drop")
+                    # result = model.fit(maxlags=hyp, B_guess=np.eye(endog.shape[1]).flatten())
+                    # pred = result.forecast(endog[-hyp:], steps=3).to_frame()
+                    # print(pred)
+
                 elif model_name == "sma":
                     model = SMA(y["case_count"], hyp)
                     pred = model.forecast(3)
