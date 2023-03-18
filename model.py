@@ -45,20 +45,31 @@ if __name__ == "__main__":
                 elif model_name == "var":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
-                    model = sm.tsa.VAR(endog, missing="drop")
-                    result = model.fit(maxlags=hyp)
-                    lag_order = result.k_ar
-                    pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
-                    pred = pred[:, 0]
-                    print(pred)
-                    # B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
-                    # print(np.logical_or(B_est == "E", B_est == "e"))
-                    # model = sm.tsa.SVAR(endog,
-                    #                     svar_type="B", B=B_est,
-                    #                     missing="drop")
-                    # result = model.fit(maxlags=hyp, B_guess=np.eye(endog.shape[1]).flatten())
-                    # pred = result.forecast(endog[-hyp:], steps=3).to_frame()
+
+                    # model = sm.tsa.VAR(endog, missing="drop")
+                    # result = model.fit(maxlags=hyp)
+                    # lag_order = result.k_ar
+                    # pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
+                    # pred = pred[:, 0]
                     # print(pred)
+
+                    B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
+                    for i in range(B_est.shape[0]):
+                        for j in range(B_est.shape[1]):
+                            if i == j:
+                                B_est[i, j] = 1
+                            elif i < j:
+                                B_est[i, j] = 0
+                    endog_np = endog.to_numpy()
+                    model = sm.tsa.SVAR(endog_np,
+                                        svar_type="B", B=B_est,
+                                        missing="drop")
+                    result = model.fit(maxlags=hyp, B_guess=np.zeros(55).astype(int))
+                    result.exog = None
+                    result.coefs_exog = np.zeros(0)
+                    result.trend = "c"
+                    pred = result.forecast(endog_np[-hyp:], steps=3)
+                    print(pred)
 
                 elif model_name == "sma":
                     model = SMA(y["case_count"], hyp)
