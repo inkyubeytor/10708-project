@@ -16,10 +16,10 @@ class SMA:
         return self
 
     def forecast(self, k):
-        tmp_data = list(self.y[-self.p:])
+        tmp_data = self.y[-self.p:].tolist()
         out = []
         for i in range(k):
             out.append(sum(tmp_data[-self.p:]) / self.p)
             tmp_data.append(out[-1])
-        start_index = self.y.index.max + 1
-        return pd.Series(data=out, name="predicted_mean", index=range(start_index, start_index + k))
+        start_index = self.y.index.max() + 1
+        return pd.Series(data=out, name="predicted_mean", index=range(start_index, start_index + k)).to_frame()

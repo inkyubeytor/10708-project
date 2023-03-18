@@ -1,21 +1,24 @@
 import argparse
 import pandas as pd
+import numpy as np
 import statsmodels.api as sm
 import patsy
 from patsy.highlevel import dmatrices
 from itertools import product
 
 from data_processing import load_data, get_datasets
+from sma import SMA
 
 ignore_na = patsy.missing.NAAction(NA_types=[])
 
-param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2]))}
+param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
+              "var": [1, 2, 3],
+              "sma": [1, 2, 3]}
 
 
 if __name__ == "__main__":
-    model_name = "arima"
-    include_exog = False
-    include_exog_str = "includeX" if include_exog else "noX"
+    model_name = "sma"
+    include_exog = True
     train_size = 0.25  # percentage of data for training only
 
     df = load_data()
@@ -32,24 +35,34 @@ if __name__ == "__main__":
             if not include_exog:
                 X = None
 
-            for hyps in param_grid[model_name]:
+            for hyp in param_grid[model_name]:
                 if model_name == "arima":
-                    model = sm.tsa.arima.ARIMA(y, exog=X, order=hyps,
+                    model = sm.tsa.arima.ARIMA(y, order=hyp,
                                                missing="drop",
                                                enforce_stationarity=False, enforce_invertibility=False)
-                    # filename = f"models/{model_name}/result_{model_name}_{strain}_train{train_idx}_order{hyps}.pkl"
+                    result = model.fit()
+                    pred = result.forecast(steps=3).to_frame()
                 elif model_name == "var":
-                    model = sm.tsa.VAR(y)
-                    # filename = f"models/{model_name}/result_{model_name}_{include_exog_str}_{strain}_train{train_idx}_hyps{hyps}.pkl"
+                    endog = y.to_frame() if X is None else y.join(X)
+                    endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
+                    # model = sm.tsa.VAR(endog, missing="drop")
+                    # np.tile('E', (endog.shape[1], endog.shape[1]))
+                    model = sm.tsa.SVAR(endog,
+                                        svar_type="B", B=np.identity(endog.shape[1]),
+                                        missing="drop")
+                    result = model.fit(maxlags=hyp)
+                    pred = result.forecast(endog[-hyp:], steps=3).to_frame()
+                    print(pred)
+                elif model_name == "sma":
+                    model = SMA(y["case_count"], hyp)
+                    pred = model.forecast(3)
                 else:
                     raise NotImplementedError
-                result = model.fit()
 
-                pred = result.forecast(3).to_frame()
                 pred.reset_index(names="forecast_index", inplace=True)
                 pred["strain"] = strain
                 pred["train_idx"] = train_idx
-                pred["hyp"] = [hyps] * 3
+                pred["hyp"] = [hyp] * 3
                 preds.append(pred)
 
     preds = pd.concat(preds).reset_index(names="steps")
