@@ -13,11 +13,12 @@ ignore_na = patsy.missing.NAAction(NA_types=[])
 
 param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
               "var": [1, 2, 3],
+              "svar": [1, 2, 3],
               "sma": [1, 2, 3]}
 
 
 if __name__ == "__main__":
-    model_name = "var"
+    model_name = "svar"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
 
@@ -50,25 +51,27 @@ if __name__ == "__main__":
                     lag_order = result.k_ar
                     pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
                     pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx+3))
+                elif model_name == "svar":
+                    endog = y.to_frame() if X is None else y.join(X)
+                    endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
 
-                    # B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
-                    # for i in range(B_est.shape[0]):
-                    #     for j in range(B_est.shape[1]):
-                    #         if i == j:
-                    #             B_est[i, j] = 1
-                    #         elif i < j:
-                    #             B_est[i, j] = 0
-                    # endog_np = endog.to_numpy()
-                    # model = sm.tsa.SVAR(endog_np,
-                    #                     svar_type="B", B=B_est,
-                    #                     missing="drop")
-                    # result = model.fit(maxlags=hyp)
-                    # result.exog = None
-                    # result.coefs_exog = np.zeros(0)
-                    # result.trend = "c"
-                    # pred = result.forecast(endog_np[-hyp:], steps=3)
-                    print(pred)
-
+                    B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
+                    for i in range(B_est.shape[0]):
+                        for j in range(B_est.shape[1]):
+                            if i == j:
+                                B_est[i, j] = 1
+                            elif i < j:
+                                B_est[i, j] = 0
+                    endog_np = endog.to_numpy()
+                    model = sm.tsa.SVAR(endog_np,
+                                        svar_type="B", B=B_est,
+                                        missing="drop")
+                    result = model.fit(maxlags=hyp)
+                    result.exog = None
+                    result.coefs_exog = np.zeros(0)
+                    result.trend = "c"
+                    pred = result.forecast(endog_np[-hyp:], steps=3)
+                    pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx + 3))
                 elif model_name == "sma":
                     model = SMA(y["case_count"], hyp)
                     pred = model.forecast(3)
