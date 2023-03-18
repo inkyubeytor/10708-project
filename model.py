@@ -64,7 +64,7 @@ if __name__ == "__main__":
                     model = sm.tsa.SVAR(endog_np,
                                         svar_type="B", B=B_est,
                                         missing="drop")
-                    result = model.fit(maxlags=hyp, B_guess=np.zeros(55).astype(int))
+                    result = model.fit(maxlags=hyp)
                     result.exog = None
                     result.coefs_exog = np.zeros(0)
                     result.trend = "c"
