@@ -2,6 +2,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+from statsmodels.tsa.statespace.tools import diff
 import patsy
 from patsy.highlevel import dmatrices
 from itertools import product
@@ -18,7 +19,7 @@ param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
 
 
 if __name__ == "__main__":
-    model_name = "svar"
+    model_name = "var"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
 
@@ -46,11 +47,15 @@ if __name__ == "__main__":
                 elif model_name == "var":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
-                    model = sm.tsa.VAR(endog, missing="drop")
+                    old_endog_case_count = endog["case_count"].to_numpy()[-1]
+                    endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
+                    params = ["case_count", "covid_query_index", "covid_symptoms_query_index"]
+                    model = sm.tsa.VAR(endog[params], missing="drop")
                     result = model.fit(maxlags=hyp)
                     lag_order = result.k_ar
-                    pred = result.forecast(np.array(endog[-lag_order:]), steps=3)
-                    pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx+3))
+                    pred = result.forecast(np.array(endog[params][-lag_order:]), steps=3)
+                    pred = old_endog_case_count + np.cumsum(pred[:, 0])
+                    pred = pd.DataFrame(pred, columns=["predicted_mean"], index=range(train_idx, train_idx+3))
                 elif model_name == "svar":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
