@@ -15,7 +15,7 @@ datasets = get_datasets(df)
 
 reg_eq = "case_count ~ " + " + ".join(list(df.columns[2:].values))
 
-data = datasets["alpha"]
+data = datasets["omicron"]
 
 train_size = 0.25  # percentage of data for training only
 train_idx = int(len(data) * train_size)
@@ -27,7 +27,7 @@ y, X = dmatrices(reg_eq, data=train_data, return_type="dataframe",
 
 normalized_df = (train_data - train_data.mean()) / train_data.std()
 normalized_df.drop(columns=[c for c in normalized_df.columns if any(np.isnan(normalized_df[c]))], inplace=True)
-normalized_df.drop(columns=["week"], inplace=True)
+normalized_df.drop(columns=["week", "death_count"], inplace=True)
 glasso = cdt.independence.graph.Glasso()
 skeleton = glasso.predict(normalized_df)
 # print(nx.adjacency_matrix(skeleton).todense())
