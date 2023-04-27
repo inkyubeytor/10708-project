@@ -52,10 +52,8 @@ new_skeleton = cdt.utils.graph.remove_indirect_links(skeleton, alg='aracne')
 
 model = cdt.causality.graph.GES()
 output_graph = model.predict(normalized_df, new_skeleton)
-# print(nx.adjacency_matrix(output_graph).todense())
-# print(output_graph.edges)
-# print([e for e in output_graph.edges if e[1] == "case_count"])
-tiers = [[("case_count", "")]]
+
+tiers = [[("case_count_0", "")]]
 while len(tiers[-1]):
     tiers.append([e for e in output_graph.edges if e[1] in [x for x, _ in tiers[-1]]])
 pprint.pprint(tiers)
