@@ -54,11 +54,9 @@ new_skeleton = cdt.utils.graph.remove_indirect_links(skeleton, alg='aracne')
 model = cdt.causality.graph.GES()
 output_graph = model.predict(normalized_df, new_skeleton)
 
-tiers = [[("case_count_0", "root_0")]]
-print(output_graph.edges)
+tiers = [{("case_count_0", "root_0")}]
 used_edges = set()
 while len(tiers[-1]):
-    print(tiers[-1])
     prev = [x for x, _ in tiers[-1]]
     new_tier = {e for e in output_graph.edges if e[1] in prev} - used_edges
     tiers.append(new_tier)
