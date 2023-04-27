@@ -68,16 +68,28 @@ for t in tiers:
 edge_set = set(edges)
 queue = [(e0, e1) for e0, e1 in edges if int(e0[-1]) < int(e1[-1])]
 
+hit_edges = set()
 while len(queue):
     to_del = queue.pop()
+    hit_edges.add(to_del)
     sink = to_del[1]
     parents = [s0 for s0, s1 in edge_set if s1 == to_del[0]]
     edge_set.discard(to_del)
     for p in parents:
-        edge_set.add((p, sink))
-        if int(p[-1]) < int(sink[-1]):
-            queue.append((p, sink))
+        edge = p, sink
+        if edge not in hit_edges:
+            if int(p[-1]) < int(sink[-1]):
+                queue.append(edge)
+            else:
+                edge_set.add(edge)
 
 edge_set.discard(("case_count_0", "root_0"))
 
 pprint.pp(edge_set)
+
+var_set = set()
+for e in edge_set:
+    var_set.add(e[0][:-2])
+    var_set.add(e[1][:-2])
+
+print(var_set)
