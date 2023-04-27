@@ -11,7 +11,7 @@ import pandas as pd
 ignore_na = patsy.missing.NAAction(NA_types=[])
 
 
-WINDOW_SIZE = 0
+WINDOW_SIZE = 1
 
 df = load_data()
 datasets = get_datasets(df)
@@ -20,7 +20,7 @@ reg_eq = "case_count ~ " + " + ".join(list(df.columns[2:].values))
 
 data = datasets["alpha"]
 
-train_size = 0.5  # percentage of data for training only
+train_size = 0.75  # percentage of data for training only
 train_idx = int(len(data) * train_size)
 train_data = data.iloc[:train_idx].reset_index()
 
@@ -55,5 +55,7 @@ output_graph = model.predict(normalized_df, new_skeleton)
 
 tiers = [[("case_count_0", "")]]
 while len(tiers[-1]):
-    tiers.append([e for e in output_graph.edges if e[1] in [x for x, _ in tiers[-1]]])
+    new_tier = [e for e in output_graph.edges if e[1] in [x for x, _ in tiers[-1]]]
+    new_tier_pruned = [(e0, e1) for e0, e1 in new_tier if int(e0[-1]) >= int(e1[-1])]
+    tiers.append(new_tier_pruned)
 pprint.pprint(tiers)
