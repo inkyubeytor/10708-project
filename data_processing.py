@@ -38,46 +38,46 @@ def load_data(group="week", interpolation=None):
 
         df = df_covid.join(df_search).join(df_flight).join(df_vaccination)
     elif group == "day":
-        if interpolation is None:
-            raise ValueError("interpolation cannot be None for daily values,"
-                             "as not all raw data is daily")
-
         df_vaccination.rename(columns={"Date": "date"}, inplace=True)
 
         df_search["week_end"] = df_search["week_start"] + datetime.timedelta(days=6)
         df_flight["week_end"] = df_flight.apply(lambda x: datetime.date.fromisocalendar(x.year, x.week, 7), axis=1) \
                                          .astype('datetime64[ns]')
 
-        if interpolation == "ffill":
+        if interpolation is None:
+            df_search["date"] = df_search["week_end"]
+            df_flight["date"] = df_flight["week_end"]
+        elif interpolation == "ffill":
             df_search["date"] = df_search["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
             df_search = df_search.explode("date", ignore_index=True)
 
             df_flight["date"] = df_flight["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
             df_flight = df_flight.explode("date", ignore_index=True)
-
-            df_search.drop(["week_start", "week_end"], axis=1, inplace=True)
-            df_flight.drop(["year", "week", "week_end"], axis=1, inplace=True)
         elif interpolation == "linear":
-            new_index_search = pd.date_range(start=df_search["week_end"].min(),
-                                             end=df_search["week_end"].max(),
-                                             name="date")
-            df_search = df_search.set_index("week_end").reindex(new_index_search).reset_index()
-            df_search_cols = df_search.select_dtypes(include=np.number)
-            for col in df_search_cols:
-                df_search[col] = df_search[col].interpolate()
-
-            new_index_flight = pd.date_range(start=df_flight["week_end"].min(),
-                                             end=df_flight["week_end"].max(),
-                                             name="date")
-            df_flight = df_flight.set_index("week_end").reindex(new_index_flight).reset_index()
-            df_flight_cols = df_flight.select_dtypes(include=np.number)
-            for col in df_flight_cols:
-                df_flight[col] = df_flight[col].interpolate()
-
-            df_search.drop(["week_start"], axis=1, inplace=True)
-            df_flight.drop(["year", "week"], axis=1, inplace=True)
+            # new_index_search = pd.date_range(start=df_search["week_end"].min(),
+            #                                  end=df_search["week_end"].max(),
+            #                                  name="date")
+            # df_search = df_search.set_index("week_end").reindex(new_index_search).reset_index()
+            # df_search_cols = df_search.select_dtypes(include=np.number)
+            # for col in df_search_cols:
+            #     df_search[col] = df_search[col].interpolate()
+            #
+            # new_index_flight = pd.date_range(start=df_flight["week_end"].min(),
+            #                                  end=df_flight["week_end"].max(),
+            #                                  name="date")
+            # df_flight = df_flight.set_index("week_end").reindex(new_index_flight).reset_index()
+            # df_flight_cols = df_flight.select_dtypes(include=np.number)
+            # for col in df_flight_cols:
+            #     df_flight[col] = df_flight[col].interpolate()
+            #
+            # df_search.drop(["week_start"], axis=1, inplace=True)
+            # df_flight.drop(["year", "week"], axis=1, inplace=True)
+            raise NotImplementedError
         else:
             raise NotImplementedError
+
+        df_search.drop(["week_start", "week_end"], axis=1, inplace=True)
+        df_flight.drop(["year", "week", "week_end"], axis=1, inplace=True)
 
         df = df_covid.merge(df_vaccination, on="date", how="left") \
                      .merge(df_search, on="date", how="left") \
@@ -86,7 +86,8 @@ def load_data(group="week", interpolation=None):
     else:
         raise NotImplementedError
 
-    df["administered_raw"] = df["administered_raw"].fillna(0)
+    df["administered_raw"] = df["administered_raw"].fillna(value=0, limit=326)
+    df["administered_cum"] = df["administered_cum"].fillna(value=0, limit=326)
     return df
 
 
@@ -95,7 +96,7 @@ def get_datasets(df, split="strain", group="week"):
         if group == "week":
             folds = {"alpha": df.iloc[:75], "delta": df.iloc[75:99], "omicron": df.iloc[99:]}
         elif group == "day":
-            raise NotImplementedError
+            folds = {"alpha": df.iloc[:522], "delta": df.iloc[522:690], "omicron": df.iloc[690:]}
         else:
             raise NotImplementedError
         return folds
@@ -182,6 +183,6 @@ def load_vaccination_data(path="", interpolation=None):
 
     # subtract series shifted by one to convert from cumulative to raw
     delta = df["Administered"][1:].values - df["Administered"][:-1].values
-    df["administered_raw"] = np.append(delta, 0).astype(np.int64)
-    df.drop("Administered", axis=1, inplace=True)
+    df.rename(columns={"Administered": "administered_cum"}, inplace=True)
+    df["administered_raw"] = np.append(0, delta).astype(np.int64)
     return df
