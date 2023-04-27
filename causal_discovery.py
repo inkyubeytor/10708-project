@@ -5,19 +5,22 @@ import cdt
 import numpy as np
 import networkx as nx
 import pprint
+import pandas as pd
 
 
 ignore_na = patsy.missing.NAAction(NA_types=[])
 
+
+WINDOW_SIZE = 0
 
 df = load_data()
 datasets = get_datasets(df)
 
 reg_eq = "case_count ~ " + " + ".join(list(df.columns[2:].values))
 
-data = datasets["omicron"]
+data = datasets["alpha"]
 
-train_size = 0.25  # percentage of data for training only
+train_size = 0.5  # percentage of data for training only
 train_idx = int(len(data) * train_size)
 train_data = data.iloc[:train_idx].reset_index()
 
@@ -28,6 +31,18 @@ y, X = dmatrices(reg_eq, data=train_data, return_type="dataframe",
 normalized_df = (train_data - train_data.mean()) / train_data.std()
 normalized_df.drop(columns=[c for c in normalized_df.columns if any(np.isnan(normalized_df[c]))], inplace=True)
 normalized_df.drop(columns=["week", "death_count"], inplace=True)
+
+copies = []
+col_names = []
+upper_base = len(normalized_df) - WINDOW_SIZE
+for i in range(WINDOW_SIZE + 1):
+    copies.append(normalized_df.iloc[i:upper_base+i].copy().reset_index(drop=True))
+    col_names.extend([f"{c}_{WINDOW_SIZE - i}" for c in copies[-1].columns])
+
+normalized_df = pd.concat(copies, axis=1, ignore_index=True)
+normalized_df.columns = col_names
+
+
 glasso = cdt.independence.graph.Glasso()
 skeleton = glasso.predict(normalized_df)
 # print(nx.adjacency_matrix(skeleton).todense())
