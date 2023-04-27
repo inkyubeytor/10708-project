@@ -30,7 +30,8 @@ y, X = dmatrices(reg_eq, data=train_data, return_type="dataframe",
 
 normalized_df = (train_data - train_data.mean()) / train_data.std()
 normalized_df.drop(columns=[c for c in normalized_df.columns if any(np.isnan(normalized_df[c]))], inplace=True)
-normalized_df.drop(columns=["week", "death_count"], inplace=True)
+normalized_df.drop(columns=["week", "death_count", "year"], inplace=True)
+print(normalized_df.columns)
 
 copies = []
 col_names = []
@@ -53,9 +54,32 @@ new_skeleton = cdt.utils.graph.remove_indirect_links(skeleton, alg='aracne')
 model = cdt.causality.graph.GES()
 output_graph = model.predict(normalized_df, new_skeleton)
 
-tiers = [[("case_count_0", "")]]
+tiers = [[("case_count_0", "root_0")]]
+print(output_graph.edges)
+used_edges = set()
 while len(tiers[-1]):
-    new_tier = [e for e in output_graph.edges if e[1] in [x for x, _ in tiers[-1]]]
-    new_tier_pruned = [(e0, e1) for e0, e1 in new_tier if int(e0[-1]) >= int(e1[-1])]
-    tiers.append(new_tier_pruned)
-pprint.pprint(tiers)
+    print(tiers[-1])
+    prev = [x for x, _ in tiers[-1]]
+    new_tier = {e for e in output_graph.edges if e[1] in prev} - used_edges
+    tiers.append(new_tier)
+    used_edges.update(new_tier)
+
+edges = []
+for t in tiers:
+    edges.extend(t)
+edge_set = set(edges)
+queue = [(e0, e1) for e0, e1 in edges if int(e0[-1]) < int(e1[-1])]
+
+while len(queue):
+    to_del = queue.pop()
+    sink = to_del[1]
+    parents = [s0 for s0, s1 in edge_set if s1 == to_del[0]]
+    edge_set.discard(to_del)
+    for p in parents:
+        edge_set.add((p, sink))
+        if int(p[-1]) < int(sink[-1]):
+            queue.append((p, sink))
+
+edge_set.discard(("case_count_0", "root_0"))
+
+pprint.pp(edge_set)
