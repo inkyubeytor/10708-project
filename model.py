@@ -18,14 +18,31 @@ param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
               "sma": [1, 2, 3]}
 
 
+CAUSAL1 = ['case_count', 'fever_query_index', 'sore_throat_query_index']
+CAUSAL2 = ['case_count', 'covid_query_index', 'sore_throat_query_index', 'cough_query_index', 'fever_query_index', 'flight_query_index', 'administered_raw']
+CAUSAL3 = ['case_count', 'covid_query_index', 'vacation_query_index', 'administered_raw']
+ALL = [
+    "case_count",
+    "administered_raw",
+    "covid_query_index",
+    "covid_symptoms_query_index",
+    "cough_query_index",
+    "sore_throat_query_index",
+    "fever_query_index",
+    "flight_query_index",
+    "vacation_query_index",
+    "flight_seats_domestic",
+    "flight_seats_international",
+]
+
 if __name__ == "__main__":
-    model_name = "sma"
+    model_name = "var"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
     group = "day"
     forecast_steps = 3 if group == "week" else 21
 
-    df = load_data(group=group)
+    df = load_data(group=group, interpolation="ffill")
     datasets = get_datasets(df, group=group)
 
     features = list(df.columns[2:].values)  # explicitly specify this
@@ -55,16 +72,36 @@ if __name__ == "__main__":
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
                     old_endog_case_count = endog["case_count"].to_numpy()[-1]
                     endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
-                    params = ["case_count", "covid_query_index", "covid_symptoms_query_index"]
+
+                    params = CAUSAL3
+
                     model = sm.tsa.VAR(endog[params], missing="drop")
                     result = model.fit(maxlags=hyp)
                     lag_order = result.k_ar
-                    pred = result.forecast(np.array(endog[params][-lag_order:]), steps=3)
+                    pred = result.forecast(np.array(endog[params][-lag_order:]), steps=forecast_steps)
                     pred = old_endog_case_count + np.cumsum(pred[:, 0])
-                    pred = pd.DataFrame(pred, columns=["predicted_mean"], index=range(train_idx, train_idx+3))
+                    pred = pd.DataFrame(pred, columns=["predicted_mean"], index=range(train_idx, train_idx+forecast_steps))
                 elif model_name == "svar":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
+
+                    old_endog_case_count = endog["case_count"].to_numpy()[-1]
+                    endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
+
+                    params = [
+                        "case_count",
+                        "administered_raw",
+                        "covid_query_index",
+                        "covid_symptoms_query_index",
+                        "cough_query_index",
+                        "sore_throat_query_index",
+                        "fever_query_index",
+                        "flight_query_index",
+                        "vacation_query_index",
+                        "flight_seats_domestic",
+                        "flight_seats_international",
+                    ]
+                    endog = endog[params]
 
                     B_est = np.tile('E', (endog.shape[1], endog.shape[1]))
                     for i in range(B_est.shape[0]):
@@ -82,7 +119,7 @@ if __name__ == "__main__":
                     result.coefs_exog = np.zeros(0)
                     result.trend = "c"
                     pred = result.forecast(endog_np[-hyp:], steps=forecast_steps)
-                    pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx + 3))
+                    pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx + forecast_steps))
                 elif model_name == "sma":
                     model = SMA(y["case_count"], hyp)
                     pred = model.forecast(forecast_steps)

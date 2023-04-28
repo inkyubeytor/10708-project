@@ -11,14 +11,14 @@ import pandas as pd
 ignore_na = patsy.missing.NAAction(NA_types=[])
 
 
-WINDOW_SIZE = 1
+WINDOW_SIZE = 0
 
 df = load_data()
 datasets = get_datasets(df)
 
 reg_eq = "case_count ~ " + " + ".join(list(df.columns[2:].values))
 
-data = datasets["alpha"]
+data = datasets["omicron"]
 
 train_size = 0.75  # percentage of data for training only
 train_idx = int(len(data) * train_size)
@@ -84,11 +84,21 @@ while len(queue):
                 edge_set.add(edge)
 
 edge_set.discard(("case_count_0", "root_0"))
+for e in edge_set.copy():
+    if e[0] == e[1]:
+        edge_set.discard(e)
 
-pprint.pp(edge_set)
+new_tier = {("case_count_0", "root_0")}
+new_edge_set = set()
+while len(new_tier):
+    prev = {x for x, _ in new_tier}
+    new_tier = {e for e in edge_set if e[1] in prev} - new_edge_set
+    new_edge_set.update(new_tier)
+
+pprint.pp(new_edge_set)
 
 var_set = set()
-for e in edge_set:
+for e in new_edge_set:
     var_set.add(e[0][:-2])
     var_set.add(e[1][:-2])
 
