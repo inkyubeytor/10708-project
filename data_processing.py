@@ -105,10 +105,18 @@ def get_datasets(df, split="strain", group="week"):
 
 
 def load_data_cumulative():
-    df_case = load_covid_data(count_type="case", path="data/covid/truth-Cumulative Cases.csv")
-    df_death = load_covid_data(count_type="death", path="data/covid/truth-Cumulative Deaths.csv")
+    df_case = load_covid_data(count_type="case")
+    df_death = load_covid_data(count_type="death")
 
-    df = pd.merge(df_case, df_death, on="date")
+    df_case_cum = load_covid_data(count_type="case", path="data/covid/truth-Cumulative Cases.csv")
+    df_death_cum = load_covid_data(count_type="death", path="data/covid/truth-Cumulative Deaths.csv")
+
+    df_inc = pd.merge(df_case, df_death, on="date")
+    df_cum = pd.merge(df_case_cum, df_death_cum, on="date")
+    df_cum.rename(columns={"case_count": "case_count_cumulative",
+                           "death_count": "death_count_cumulative"}, inplace=True)
+
+    df = pd.merge(df_inc, df_cum, on="date")
 
     return df
 
@@ -116,10 +124,13 @@ def load_data_cumulative():
 def get_datasets_cumulative(df, split="strain"):
     if split == "strain":
         folds = {"alpha": df.iloc[:522], "delta": df.iloc[522:690], "omicron": df.iloc[690:]}
-        for strain, df_strain in folds.items():
-            df_strain["case_count"] -= df_strain["case_count"].min()
-            df_strain["death_count"] -= df_strain["death_count"].min()
-            folds[strain] = df_strain
+
+        folds["omicron"]["case_count_cumulative"] -= folds["delta"].iloc[-1]["case_count_cumulative"]
+        folds["omicron"]["death_count_cumulative"] -= folds["delta"].iloc[-1]["death_count_cumulative"]
+
+        folds["delta"]["case_count_cumulative"] -= folds["alpha"].iloc[-1]["case_count_cumulative"]
+        folds["delta"]["death_count_cumulative"] -= folds["alpha"].iloc[-1]["death_count_cumulative"]
+
         return folds
     else:
         raise NotImplementedError
