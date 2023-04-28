@@ -6,7 +6,7 @@ from data_processing import load_data, get_datasets
 
 
 def evaluate(model_name, datasets, include_exog=True, val_size=0.25, test_size=0.25):
-    preds = pd.read_csv(f"results/{model_name}_predictions.csv")
+    preds = pd.read_csv(f"results/{model_name}_week_predictions.csv")
     hyps = preds["hyp"].unique()
 
     results = []
@@ -45,8 +45,11 @@ def evaluate(model_name, datasets, include_exog=True, val_size=0.25, test_size=0
     return pd.DataFrame(results)
 
 
-def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_size=0.25):
-    preds = pd.read_csv(f"results/{model_name}_{group}_predictions.csv")
+def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_size=0.25, path=None):
+    if path is None:
+        preds = pd.read_csv(f"results/{model_name}_{group}_predictions.csv")
+    else:
+        preds = pd.read_csv(path)
     hyps = preds["hyp"].unique()
     steps = [7, 14, 21]
 
@@ -108,10 +111,10 @@ def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_si
 
 
 if __name__ == "__main__":
-    group = "day"
+    group = "week"
 
     df = load_data(group=group)
     datasets = get_datasets(df, group=group)
 
-    results = evaluate_day("var", datasets)
-    print(results)
+    results = evaluate("sma", datasets)
+    print(" ".join(map(str, results["err_test"])))
