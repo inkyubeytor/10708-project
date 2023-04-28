@@ -54,25 +54,17 @@ def load_data(group="week", interpolation=None):
             df_flight["date"] = df_flight["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
             df_flight = df_flight.explode("date", ignore_index=True)
         elif interpolation == "linear":
-            # new_index_search = pd.date_range(start=df_search["week_end"].min(),
-            #                                  end=df_search["week_end"].max(),
-            #                                  name="date")
-            # df_search = df_search.set_index("week_end").reindex(new_index_search).reset_index()
-            # df_search_cols = df_search.select_dtypes(include=np.number)
-            # for col in df_search_cols:
-            #     df_search[col] = df_search[col].interpolate()
-            #
-            # new_index_flight = pd.date_range(start=df_flight["week_end"].min(),
-            #                                  end=df_flight["week_end"].max(),
-            #                                  name="date")
-            # df_flight = df_flight.set_index("week_end").reindex(new_index_flight).reset_index()
-            # df_flight_cols = df_flight.select_dtypes(include=np.number)
-            # for col in df_flight_cols:
-            #     df_flight[col] = df_flight[col].interpolate()
-            #
-            # df_search.drop(["week_start"], axis=1, inplace=True)
-            # df_flight.drop(["year", "week"], axis=1, inplace=True)
-            raise NotImplementedError
+            df_search["date"] = df_search["week_end"]
+            df_flight["date"] = df_flight["week_end"]
+
+            df_search = fill_missing(df_search,
+                                     [f"{term}_query_index" for term in terms],
+                                     "date",
+                                     method=interpolation)
+            df_flight = fill_missing(df_flight,
+                                     ["flight_seats_domestic", "flight_seats_international"],
+                                     "date",
+                                     method=interpolation)
         else:
             raise NotImplementedError
 
@@ -224,15 +216,22 @@ def fill_missing(df, fill_columns, index_column, method="ffill"):
             df[fill_column] = df[fill_column].fillna(method="ffill")
     elif method == "linear":
         for fill_column in fill_columns:
+            gap = 1
+            curr_gap = 1
+            inc1 = 0
+            inc2 = 0
             new_values = []
             for value in df[fill_column]:
                 if np.isnan(value):
                     prev = new_values[-1] if len(new_values) > 0 else np.nan
-                    pprev = new_values[-2] if len(new_values) > 1 else prev
-                    print(value, prev + (prev - pprev))
-                    new_values.append(prev + (prev - pprev))
+                    new_values.append(prev + (inc1 - inc2) / gap)
+                    curr_gap += 1
                 else:
                     new_values.append(value)
+                    inc2 = inc1
+                    inc1 = value
+                    gap = curr_gap
+                    curr_gap = 1
             df[fill_column] = new_values
     else:
         raise NotImplementedError
