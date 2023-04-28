@@ -104,6 +104,27 @@ def get_datasets(df, split="strain", group="week"):
         raise NotImplementedError
 
 
+def load_data_cumulative():
+    df_case = load_covid_data(count_type="case", path="data/covid/truth-Cumulative Cases.csv")
+    df_death = load_covid_data(count_type="death", path="data/covid/truth-Cumulative Deaths.csv")
+
+    df = pd.merge(df_case, df_death, on="date")
+
+    return df
+
+
+def get_datasets_cumulative(df, split="strain"):
+    if split == "strain":
+        folds = {"alpha": df.iloc[:522], "delta": df.iloc[522:690], "omicron": df.iloc[690:]}
+        for strain, df_strain in folds.items():
+            df_strain["case_count"] -= df_strain["case_count"].min()
+            df_strain["death_count"] -= df_strain["death_count"].min()
+            folds[strain] = df_strain
+        return folds
+    else:
+        raise NotImplementedError
+
+
 def load_covid_data(count_type="case", path=""):
     # default filepaths
     if not path:
@@ -171,18 +192,38 @@ def load_vaccination_data(path="", interpolation=None):
     df.reset_index(drop=True, inplace=True)
 
     if interpolation is not None:
-        new_index = pd.date_range(start=df["Date"].min(), end=df["Date"].max(), name="Date")
-        df = df.set_index("Date").reindex(new_index).reset_index()
-
-        if interpolation == "ffill":
-            df.fillna(method="ffill", inplace=True)
-        elif interpolation == "linear":
-            df["Administered"] = df["Administered"].interpolate()
-        else:
-            raise NotImplementedError
+        df = fill_missing(df, ["Administered"], "Date", method=interpolation)
 
     # subtract series shifted by one to convert from cumulative to raw
     delta = df["Administered"][1:].values - df["Administered"][:-1].values
     df.rename(columns={"Administered": "administered_cum"}, inplace=True)
     df["administered_raw"] = np.append(0, delta).astype(np.int64)
+    return df
+
+
+def fill_missing(df, fill_columns, index_column, method="ffill"):
+    df.sort_values(by=index_column, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    new_index = pd.date_range(start=df[index_column].min(), end=df[index_column].max(), name=index_column)
+    df = df.set_index(index_column).reindex(new_index).reset_index()
+
+    if method == "ffill":
+        for fill_column in fill_columns:
+            df[fill_column] = df[fill_column].fillna(method="ffill")
+    elif method == "linear":
+        for fill_column in fill_columns:
+            new_values = []
+            for value in df[fill_column]:
+                if np.isnan(value):
+                    prev = new_values[-1] if len(new_values) > 0 else np.nan
+                    pprev = new_values[-2] if len(new_values) > 1 else prev
+                    print(value, prev + (prev - pprev))
+                    new_values.append(prev + (prev - pprev))
+                else:
+                    new_values.append(value)
+            df[fill_column] = new_values
+    else:
+        raise NotImplementedError
+
     return df
