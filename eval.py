@@ -113,5 +113,5 @@ if __name__ == "__main__":
     df = load_data(group=group)
     datasets = get_datasets(df, group=group)
 
-    results = evaluate_day("sma", datasets)
+    results = evaluate_day("var", datasets)
     print(results)

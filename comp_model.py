@@ -12,6 +12,35 @@ ignore_na = patsy.missing.NAAction(NA_types=[])
 param_grid = [1, 2, 3]
 
 
+def make_m1(df):
+    df["case_squared"] = df["case_count_cumulative"] ** 2
+    df["case_x_death"] = df["case_count_cumulative"] * df["death_count_cumulative"]
+    return df
+
+
+def make_m1_stationary(df):
+    df["death_count"] = np.insert(diff(df["death_count"].to_numpy(), k_diff=1), 0, 0)
+    # case already diffed
+    df["case_squared"] = df["case_count"] ** 2
+    df["case_x_death"] = df["case_count"] * df["death_count"]
+    return df
+
+
+def make_m2(df):
+    df["case_squared"] = df["case_count_cumulative"] ** 2
+    df["d^2/c"] = df["death_count_cumulative"] ** 2 / df["case_count_cumulative"]
+    df["death_squared"] = df["death_count_cumulative"] ** 2
+    return df
+
+
+def make_m2_stationary(df):
+    df["death_count"] = np.insert(diff(df["death_count"].to_numpy(), k_diff=1), 0, 0)
+    # case already diffed
+
+    df["case_squared"] = df["case_count"] ** 2
+    df["d^2/c"] = df["death_count"] ** 2 / df["case_count"]
+    df["death_squared"] = df["death_count"] ** 2
+    return df
 
 
 if __name__ == "__main__":
@@ -42,7 +71,7 @@ if __name__ == "__main__":
                 old_endog_case_count = endog["case_count"].to_numpy()[-1]
                 endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
 
-                endog = endog[["case_count", "case"]]  # TODO
+                endog = make_m2_stationary(endog)  # THIS LINE CHOOSES METHOD
 
                 model = sm.tsa.VAR(endog, missing="drop")
                 result = model.fit(maxlags=hyp)
