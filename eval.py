@@ -81,15 +81,11 @@ def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_si
             truth_test.append(data.iloc[idx_set]["case_count"].sum())
         preds_test = pd.concat(preds_test, ignore_index=True)
         truth_test = np.array(truth_test)
-        # print(data.iloc[val_idx]["date"])
-        print(preds_val)
 
         for step in steps:
             errors = []
             for hyp in hyps:
                 pred = preds_val[(preds_val["hyp"] == hyp) & (preds_val["steps"] == step)]["predicted_mean"]
-                # print(pred)
-                # print(truth_val)
                 assert len(truth_val) == len(pred)
                 pred = pred.fillna(-1e7)
                 # err = mean_squared_error(truth_val, pred, squared=False)
@@ -117,5 +113,5 @@ if __name__ == "__main__":
     df = load_data(group=group)
     datasets = get_datasets(df, group=group)
 
-    results = evaluate_day("arima", datasets)
+    results = evaluate_day("sma", datasets)
     print(results)

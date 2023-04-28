@@ -19,7 +19,7 @@ param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
 
 
 if __name__ == "__main__":
-    model_name = "arima"
+    model_name = "sma"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
     group = "day"
