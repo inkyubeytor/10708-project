@@ -15,6 +15,7 @@ param_grid = [1, 2, 3]
 def make_m1(df):
     df["case_squared"] = df["case_count_cumulative"] ** 2
     df["case_x_death"] = df["case_count_cumulative"] * df["death_count_cumulative"]
+    df = df[["case_count", "case_count_cumulative", "death_count_cumulative", "case_squared", "case_x_death"]]
     return df
 
 
@@ -90,6 +91,21 @@ def make_m3_stationary(df):
     return df
 
 
+def make_m4(df):
+    a = compute_a(df)
+    df["dt"] = df["death_count_cumulative"] / (df["case_count_cumulative"] - (df["case_count"] / (a * (N - df["case_count_cumulative"]))))
+    df = df[["case_count", "case_count_cumulative", "death_count_cumulative", "dt"]]
+    return df
+
+
+def make_m4_stationary(df):
+    df = make_m4(df)
+
+    for row in ["case_count_cumulative", "death_count_cumulative", "dt"]:
+        df[row] = np.insert(diff(df[row].to_numpy(), k_diff=1), 0, 0)
+    return df
+
+
 if __name__ == "__main__":
     model_name = "var"
     train_size = 0.25  # percentage of data for training only
@@ -118,7 +134,7 @@ if __name__ == "__main__":
                 old_endog_case_count = endog["case_count"].to_numpy()[-1]
                 endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
 
-                endog = make_m3_stationary(endog)  # THIS LINE CHOOSES METHOD
+                endog = make_m4_stationary(endog)  # THIS LINE CHOOSES METHOD
 
                 model = sm.tsa.VAR(endog, missing="drop")
                 result = model.fit(maxlags=hyp)
