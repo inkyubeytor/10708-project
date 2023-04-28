@@ -19,10 +19,10 @@ def make_m1(df):
 
 
 def make_m1_stationary(df):
-    df["death_count"] = np.insert(diff(df["death_count"].to_numpy(), k_diff=1), 0, 0)
-    # case already diffed
-    df["case_squared"] = df["case_count"] ** 2
-    df["case_x_death"] = df["case_count"] * df["death_count"]
+    df = make_m1(df)
+
+    for row in ["case_count_cumulative", "death_count_cumulative", "case_squared", "case_x_death"]:
+        df[row] = np.insert(diff(df[row].to_numpy(), k_diff=1), 0, 0)
     return df
 
 
@@ -30,16 +30,15 @@ def make_m2(df):
     df["case_squared"] = df["case_count_cumulative"] ** 2
     df["d^2/c"] = df["death_count_cumulative"] ** 2 / df["case_count_cumulative"]
     df["death_squared"] = df["death_count_cumulative"] ** 2
+    df = df[["case_count", "case_count_cumulative", "case_squared", "d^2/c", "death_squared"]]
     return df
 
 
 def make_m2_stationary(df):
-    df["death_count"] = np.insert(diff(df["death_count"].to_numpy(), k_diff=1), 0, 0)
-    # case already diffed
+    df = make_m2(df)
 
-    df["case_squared"] = df["case_count"] ** 2
-    df["d^2/c"] = df["death_count"] ** 2 / df["case_count"]
-    df["death_squared"] = df["death_count"] ** 2
+    for row in ["case_count_cumulative", "case_squared", "d^2/c", "death_squared"]:
+        df[row] = np.insert(diff(df[row].to_numpy(), k_diff=1), 0, 0)
     return df
 
 
