@@ -44,19 +44,26 @@ def load_data(group="week", interpolation=None):
         df_flight["week_end"] = df_flight.apply(lambda x: datetime.date.fromisocalendar(x.year, x.week, 7), axis=1) \
                                          .astype('datetime64[ns]')
 
+        df_search["date"] = df_search["week_end"]
+        df_flight["date"] = df_flight["week_end"]
+
         if interpolation is None:
-            df_search["date"] = df_search["week_end"]
-            df_flight["date"] = df_flight["week_end"]
+            pass
         elif interpolation == "ffill":
-            df_search["date"] = df_search["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
-            df_search = df_search.explode("date", ignore_index=True)
-
-            df_flight["date"] = df_flight["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
-            df_flight = df_flight.explode("date", ignore_index=True)
+            # df_search["date"] = df_search["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
+            # df_search = df_search.explode("date", ignore_index=True)
+            #
+            # df_flight["date"] = df_flight["week_end"].apply(lambda d: [d + datetime.timedelta(days=i+1) for i in range(7)])
+            # df_flight = df_flight.explode("date", ignore_index=True)
+            df_search = fill_missing(df_search,
+                                     [f"{term}_query_index" for term in terms],
+                                     "date",
+                                     method=interpolation)
+            df_flight = fill_missing(df_flight,
+                                     ["flight_seats_domestic", "flight_seats_international"],
+                                     "date",
+                                     method=interpolation)
         elif interpolation == "linear":
-            df_search["date"] = df_search["week_end"]
-            df_flight["date"] = df_flight["week_end"]
-
             df_search = fill_missing(df_search,
                                      [f"{term}_query_index" for term in terms],
                                      "date",

@@ -1,7 +1,70 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
 from data_processing import load_data, get_datasets
 
-df_nan = load_data(group="day", interpolation=None)
-datasets_nan = get_datasets(df_nan, group="day")
 
-df_ffill = load_data(group="day", interpolation="ffill")
-datasets_ffill = get_datasets(df_ffill, group="day")
+def get_datasets_alt_interpolate(window_size, num_epochs=10, interpolation="ffill"):
+    df_nan = load_data(group="day", interpolation=None)
+    datasets_nan = get_datasets(df_nan, group="day")
+
+    df_int = load_data(group="day", interpolation=interpolation)
+    datasets_int = get_datasets(df_int, group="day")
+
+    terms = ["covid", "covid_symptoms", "cough", "sore_throat", "fever", "flight", "vacation"]
+
+    interpolate_columns = [f"{term}_query_index" for term in terms] \
+                          + ["flight_seats_domestic", "flight_seats_international", "administered_cum"]
+    np.random.shuffle(interpolate_columns)
+
+    for strain, df in datasets_nan.items():
+        df.reset_index(drop=True, inplace=True)
+
+    for strain, df in datasets_int.items():
+        df.reset_index(drop=True, inplace=True)
+        for epoch in range(num_epochs):
+            for col in interpolate_columns:
+                # print("interpolating", col)
+                # feat_columns = list(df.columns)
+                # feat_columns.remove(col)
+                df_tmp = df.drop("date", axis=1)
+                X = []
+                for i in range(len(df)):
+                    if i < window_size:
+                        vals = df_tmp.iloc[0:i].values
+                        fill = np.ones((window_size - i, df_tmp.shape[1])) * -1
+                        X.append(np.vstack([fill, vals]).flatten())
+                        # print(i, np.isnan(np.vstack([fill, vals]).flatten()).sum())
+                    else:
+                        X.append(df_tmp.iloc[i - window_size:i].values.flatten())
+                        # print(i, np.isnan(df_tmp.iloc[i - window_size:i].values.flatten()).sum())
+                X = np.stack(X)
+                y = df[col]
+                # print("nan in X", np.isnan(X).sum())
+                scaler = StandardScaler()
+                X = scaler.fit_transform(X)
+                model = LinearRegression()
+                model.fit(X, y)
+                fill_y = pd.Series(model.predict(X))
+                # print("y len", len(y), len(fill_y))
+                # aaa = datasets_nan[strain][col].fillna(fill_y).isna().sum()
+                # print("nan in fill y", aaa)
+                # if aaa > 0:
+                #     print(y, fill_y, datasets_nan[strain][col].fillna(fill_y))
+                df[col] = datasets_nan[strain][col].fillna(fill_y)
+
+    return datasets_int
+
+
+if __name__ == "__main__":
+    model_name = "var"
+    include_exog = True
+    train_size = 0.25  # percentage of data for training only
+    group = "day"
+    forecast_steps = 21
+
+    datasets = get_datasets_alt_interpolate(window_size=2, num_epochs=10)
+    for strain, data in datasets.items():
+        print(strain)
+        print(data.isna().sum())
