@@ -116,5 +116,5 @@ if __name__ == "__main__":
     df = load_data(group=group)
     datasets = get_datasets(df, group=group)
 
-    results = evaluate("sma", datasets)
+    results = evaluate("var", datasets)
     print(" ".join(map(str, results["err_test"])))

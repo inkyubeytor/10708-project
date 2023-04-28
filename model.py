@@ -39,7 +39,7 @@ if __name__ == "__main__":
     model_name = "var"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
-    group = "day"
+    group = "week"
     forecast_steps = 3 if group == "week" else 21
 
     df = load_data(group=group, interpolation="linear")
@@ -53,8 +53,9 @@ if __name__ == "__main__":
     for strain, data in datasets.items():
         print(f"modeling strain {strain}")
         for train_idx in range(int(len(data) * train_size), len(data)):
-            if train_idx % 7 != 6:
-                continue
+            if group != "week":
+                if train_idx % 7 != 6:
+                    continue
             train_data = data.iloc[:train_idx].reset_index()
             y, X = dmatrices(reg_eq, data=train_data, return_type="dataframe", NA_action=ignore_na)
             if not include_exog:
@@ -73,7 +74,7 @@ if __name__ == "__main__":
                     old_endog_case_count = endog["case_count"].to_numpy()[-1]
                     endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
 
-                    params = ALL
+                    params = CAUSAL3
 
                     model = sm.tsa.VAR(endog[params], missing="drop")
                     result = model.fit(maxlags=hyp)
