@@ -19,19 +19,25 @@ param_grid = {"arima": list(product([1, 2, 3], [1, 2], [1, 2])),
 
 
 if __name__ == "__main__":
-    model_name = "var"
+    model_name = "arima"
     include_exog = True
     train_size = 0.25  # percentage of data for training only
+    group = "day"
+    forecast_steps = 3 if group == "week" else 21
 
-    df = load_data()
-    datasets = get_datasets(df)
+    df = load_data(group=group)
+    datasets = get_datasets(df, group=group)
 
-    reg_eq = "case_count ~ " + " + ".join(list(df.columns[2:].values))
+    features = list(df.columns[2:].values)  # explicitly specify this
+    reg_eq = "case_count ~ " + " + ".join(features)
     print(reg_eq)
 
     preds = []
     for strain, data in datasets.items():
+        print(f"modeling strain {strain}")
         for train_idx in range(int(len(data) * train_size), len(data)):
+            if train_idx % 7 != 6:
+                continue
             train_data = data.iloc[:train_idx].reset_index()
             y, X = dmatrices(reg_eq, data=train_data, return_type="dataframe", NA_action=ignore_na)
             if not include_exog:
@@ -43,7 +49,7 @@ if __name__ == "__main__":
                                                missing="drop",
                                                enforce_stationarity=False, enforce_invertibility=False)
                     result = model.fit()
-                    pred = result.forecast(steps=3).to_frame()
+                    pred = result.forecast(steps=forecast_steps).to_frame()
                 elif model_name == "var":
                     endog = y.to_frame() if X is None else y.join(X)
                     endog.drop("Intercept", axis=1, inplace=True, errors="ignore")
@@ -75,20 +81,20 @@ if __name__ == "__main__":
                     result.exog = None
                     result.coefs_exog = np.zeros(0)
                     result.trend = "c"
-                    pred = result.forecast(endog_np[-hyp:], steps=3)
+                    pred = result.forecast(endog_np[-hyp:], steps=forecast_steps)
                     pred = pd.DataFrame(pred[:, 0], columns=["predicted_mean"], index=range(train_idx, train_idx + 3))
                 elif model_name == "sma":
                     model = SMA(y["case_count"], hyp)
-                    pred = model.forecast(3)
+                    pred = model.forecast(forecast_steps)
                 else:
                     raise NotImplementedError
 
                 pred.reset_index(names="forecast_index", inplace=True)
                 pred["strain"] = strain
                 pred["train_idx"] = train_idx
-                pred["hyp"] = [hyp] * 3
+                pred["hyp"] = [hyp] * forecast_steps
                 preds.append(pred)
 
     preds = pd.concat(preds).reset_index(names="steps")
     preds["steps"] += 1
-    preds.to_csv(f"results/{model_name}_predictions.csv", index=False)
+    preds.to_csv(f"results/{model_name}_{group}_predictions.csv", index=False)
