@@ -47,7 +47,7 @@ def evaluate(model_name, datasets, include_exog=True, val_size=0.25, test_size=0
 
 def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_size=0.25, path=None):
     if path is None:
-        preds = pd.read_csv(f"results/{model_name}_{group}_predictions.csv")
+        preds = pd.read_csv(f"results/alternating/alternating_window7_all.csv")
     else:
         preds = pd.read_csv(path)
     hyps = preds["hyp"].unique()
@@ -111,10 +111,10 @@ def evaluate_day(model_name, datasets, include_exog=True, val_size=0.25, test_si
 
 
 if __name__ == "__main__":
-    group = "week"
+    group = "day"
 
     df = load_data(group=group)
     datasets = get_datasets(df, group=group)
 
-    results = evaluate("var", datasets)
+    results = evaluate_day("var", datasets)
     print(" ".join(map(str, results["err_test"])))

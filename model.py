@@ -8,7 +8,6 @@ from patsy.highlevel import dmatrices
 from itertools import product
 
 from data_processing import load_data, get_datasets
-from interpolation_modeling import get_datasets_alt_interpolate
 from sma import SMA
 
 ignore_na = patsy.missing.NAAction(NA_types=[])
@@ -43,9 +42,8 @@ if __name__ == "__main__":
     group = "day"
     forecast_steps = 3 if group == "week" else 21
 
-    df = load_data(group=group, interpolation="linear")
-    # datasets = get_datasets(df, group=group)
-    datasets = get_datasets_alt_interpolate(window_size=1, interpolation="ffill")
+    df = load_data(group=group, interpolation="ffill")
+    datasets = get_datasets(df, group=group)
 
     features = list(df.columns[2:].values)  # explicitly specify this
     reg_eq = "case_count ~ " + " + ".join(features)
