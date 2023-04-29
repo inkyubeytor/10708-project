@@ -206,8 +206,8 @@ def load_vaccination_data(path="", interpolation=None):
 
     # subtract series shifted by one to convert from cumulative to raw
     delta = df["Administered"][1:].values - df["Administered"][:-1].values
-    df.rename(columns={"Administered": "administered_cum"}, inplace=True)
     df["administered_raw"] = np.append(0, delta).astype(np.int64)
+    df.rename(columns={"Administered": "administered_cum"}, inplace=True)
     return df
 
 

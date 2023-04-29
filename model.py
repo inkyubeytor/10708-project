@@ -76,7 +76,7 @@ if __name__ == "__main__":
                     old_endog_case_count = endog["case_count"].to_numpy()[-1]
                     endog["case_count"] = np.insert(diff(endog["case_count"].to_numpy(), k_diff=1), 0, 0)
 
-                    params = CAUSAL3
+                    params = ALL
 
                     model = sm.tsa.VAR(endog[params], missing="drop")
                     result = model.fit(maxlags=hyp)

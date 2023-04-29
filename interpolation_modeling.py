@@ -43,6 +43,9 @@ def get_datasets_alt_interpolate(window_size, num_epochs=10, interpolation="ffil
                 fill_y = pd.Series(model.predict(X))
                 df[col] = datasets_nan[strain][col].fillna(fill_y)
 
+            delta = df["administered_cum"][1:].values - df["administered_cum"][:-1].values
+            df["administered_raw"] = np.append(0, delta).astype(np.int64)
+
     return datasets_int
 
 
