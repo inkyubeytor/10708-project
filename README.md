@@ -9,3 +9,5 @@ To train the compartmental models, do the same in `comp_model.py`, but change th
 To run causal discovery, set `data` to the desired strain in `causal_discovery.py` and set `WINDOW_SIZE` and run the file.
 
 To evaluate a model, pass in the path of the predictions csv to the relevant function (evaluate or evaluate_day) in `eval.py`.
+
+Data can be found at https://drive.google.com/drive/folders/1obX5Lv4VOAVVoJMV6GYEocZ8ctBUGswK?usp=sharing
